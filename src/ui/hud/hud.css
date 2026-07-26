@@ -1,0 +1,162 @@
+.hud {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-hud);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.hud__top {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.hud__exit-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  line-height: 1;
+  background: var(--overlay);
+  color: var(--paper);
+  pointer-events: auto;
+  transition: background 0.15s ease;
+}
+
+.hud__exit-btn:hover {
+  background: rgba(45, 110, 94, 0.5);
+}
+
+.hud__chord-container {
+  text-align: center;
+}
+
+.hud__hint {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--signal-dim);
+  margin-bottom: 4px;
+  animation: hint-pulse 2s ease-in-out infinite;
+}
+
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.hud__chord-name {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 8vw, 4rem);
+  font-weight: 700;
+  color: var(--signal-dim);
+  transition: color 0.15s ease;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.hud__chord-name--active {
+  color: var(--signal);
+}
+
+.hud__chord-detail {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--signal-dim);
+  margin-top: 4px;
+}
+
+.hud__bottom {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.hud__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+  background: var(--overlay);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  backdrop-filter: blur(8px);
+}
+
+.hud__btn {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--signal-dim);
+  color: var(--paper);
+  transition: all 0.15s ease;
+}
+
+.hud__btn:hover {
+  background: var(--signal);
+  border-color: var(--signal);
+}
+
+.hud__presets {
+  display: flex;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--signal-dim);
+}
+
+.hud__preset-btn {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--paper);
+  transition: all 0.15s ease;
+}
+
+.hud__preset-btn--active {
+  background: var(--signal);
+}
+
+.hud__preset-btn:not(.hud__preset-btn--active):hover {
+  background: rgba(45, 110, 94, 0.3);
+}
+
+.hud__record-btn {
+  font-size: 1.4rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 2px solid var(--alert);
+  color: var(--alert);
+  transition: all 0.15s ease;
+}
+
+.hud__record-btn:hover {
+  background: rgba(179, 64, 29, 0.15);
+}
+
+.hud__record-btn--recording {
+  animation: record-pulse 1s ease-in-out infinite;
+}
+
+@keyframes record-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
