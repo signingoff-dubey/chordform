@@ -6,18 +6,20 @@ function App() {
   const {
     state,
     canvasRef,
+    getWaveform,
     startPlaying,
     startCamera,
     stopCamera,
     toggleReference,
     setPreset,
+    adjustTranspose,
     startRecording,
     stopRecording,
     discardRecording,
     downloadRecording,
   } = useAppState();
 
-  const { screen, chord, preset, recording, showReference, oneHandVisible, cameraStream } = state;
+  const { screen, chord, preset, transpose, recording, showReference, oneHandVisible, cameraStream } = state;
 
   if (screen === 'landing') {
     return (
@@ -33,6 +35,20 @@ function App() {
           </button>
           <p className="landing__privacy">
             Your camera and microphone never leave this device.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'loading') {
+    return (
+      <div className="landing">
+        <div className="landing__content">
+          <div className="landing__spinner" aria-hidden="true" />
+          <h1 className="landing__title">ChordForm</h1>
+          <p className="landing__desc">
+            Setting up your camera and hand tracking…
           </p>
         </div>
       </div>
@@ -81,15 +97,18 @@ function App() {
     <PlayScreen
       chord={chord}
       preset={preset}
+      transpose={transpose}
       recording={recording}
       showReference={showReference}
       oneHandVisible={oneHandVisible}
       cameraStream={cameraStream}
       canvasRef={canvasRef}
+      getWaveform={getWaveform}
       onStartCamera={startCamera}
       onExit={stopCamera}
       onToggleReference={toggleReference}
-      onSetPreset={setPreset}
+      onSelectInstrument={setPreset}
+      onAdjustTranspose={adjustTranspose}
       onStartRecording={startRecording}
       onStopRecording={stopRecording}
       onDiscardRecording={discardRecording}

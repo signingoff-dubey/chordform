@@ -14,6 +14,11 @@
   object-fit: cover;
   z-index: var(--z-camera);
   transform: scaleX(-1);
+  /* The canvas above fully repaints this every frame (mirrored video +
+     overlay + HUD burn-in for recording), so the raw <video> element is
+     never actually seen — hiding it avoids paying for a second, redundant
+     compositing pass of the same camera feed. */
+  opacity: 0;
 }
 
 .play-screen__canvas {

@@ -1,0 +1,17 @@
+.visualizer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 72px;
+  z-index: var(--z-hud);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+@media (min-width: 1024px) {
+  .visualizer {
+    height: 90px;
+  }
+}

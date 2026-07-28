@@ -16,45 +16,47 @@ A chord needs **two hands, at the same time**: your left hand picks the root not
 
 `●` = finger extended &nbsp;&nbsp; `○` = finger curled
 
+Isolating just the middle finger or just the ring finger is hard for most hands, so neither is ever used alone — they only appear paired with other fingers. The progression starts at the index finger (not the thumb) and the note names read in full chromatic order (A, A#, B, C, C#, D, D#, E, F, F#, G, G#) regardless of which gesture happens to be easiest.
+
 ### Left hand — root note
 
 | Thumb | Index | Middle | Ring | Pinky | Root |
 |---|---|---|---|---|---|
 | ○ | ○ | ○ | ○ | ○ | *(silent — no root)* |
-| ● | ○ | ○ | ○ | ○ | **A** |
-| ○ | ● | ○ | ○ | ○ | **B** |
-| ○ | ○ | ● | ○ | ○ | **C** |
-| ○ | ○ | ○ | ● | ○ | **D** |
-| ○ | ○ | ○ | ○ | ● | **E** |
-| ● | ● | ○ | ○ | ○ | **F** |
-| ○ | ● | ● | ○ | ○ | **G** |
-| ● | ○ | ● | ○ | ○ | **A# / Bb** |
-| ● | ○ | ○ | ● | ○ | **C# / Db** |
-| ● | ○ | ○ | ○ | ● | **D# / Eb** |
-| ○ | ● | ○ | ● | ○ | **F# / Gb** |
-| ○ | ● | ○ | ○ | ● | **G# / Ab** |
+| ○ | ● | ○ | ○ | ○ | **A** |
+| ● | ○ | ○ | ○ | ○ | **A# / Bb** |
+| ○ | ○ | ○ | ○ | ● | **B** |
+| ● | ● | ○ | ○ | ○ | **C** |
+| ○ | ● | ● | ○ | ○ | **C# / Db** |
+| ● | ○ | ○ | ○ | ● | **D** |
+| ○ | ● | ○ | ○ | ● | **D# / Eb** |
+| ● | ○ | ● | ○ | ○ | **E** |
+| ○ | ○ | ○ | ● | ● | **F** |
+| ● | ● | ○ | ○ | ● | **F# / Gb** |
+| ● | ● | ● | ○ | ○ | **G** |
+| ● | ○ | ● | ○ | ● | **G# / Ab** |
 
 ### Right hand — chord quality
 
 | Thumb | Index | Middle | Ring | Pinky | Quality |
 |---|---|---|---|---|---|
 | ○ | ○ | ○ | ○ | ○ | *(silent — no quality)* |
-| ● | ○ | ○ | ○ | ○ | **Major** |
-| ○ | ● | ○ | ○ | ○ | **Minor** |
-| ○ | ○ | ● | ○ | ○ | **Dominant 7** |
-| ○ | ○ | ○ | ● | ○ | **Major 7** |
-| ○ | ○ | ○ | ○ | ● | **Minor 7** |
-| ● | ● | ○ | ○ | ○ | **Sus2** |
-| ● | ○ | ● | ○ | ○ | **Sus4** |
-| ● | ○ | ○ | ● | ○ | **Diminished** |
-| ● | ○ | ○ | ○ | ● | **Augmented** |
-| ○ | ● | ● | ○ | ○ | **Major 6** |
-| ○ | ● | ○ | ● | ○ | **Minor 6** |
-| ○ | ● | ○ | ○ | ● | **Add9** |
+| ○ | ● | ○ | ○ | ○ | **Major** |
+| ● | ○ | ○ | ○ | ○ | **Minor** |
+| ○ | ○ | ○ | ○ | ● | **Dominant 7** |
+| ● | ● | ○ | ○ | ○ | **Major 7** |
+| ○ | ● | ● | ○ | ○ | **Minor 7** |
+| ● | ○ | ○ | ○ | ● | **Sus2** |
+| ○ | ● | ○ | ○ | ● | **Sus4** |
+| ● | ○ | ● | ○ | ○ | **Diminished** |
+| ○ | ○ | ○ | ● | ● | **Augmented** |
+| ● | ● | ○ | ○ | ● | **Major 6** |
+| ● | ● | ● | ○ | ○ | **Minor 6** |
+| ● | ○ | ● | ○ | ● | **Add9** |
 
 ### Example
 
-Want to play **Cm7**? Left hand: only your middle finger up (**C**). Right hand: index + pinky up (**Minor 7**). Hold both — that's the chord. Move your right hand slowly left-right in an arc while holding it for vibrato.
+Want to play **Cm7**? Left hand: thumb + index up (**C**). Right hand: index + middle up (**Minor 7**). Hold both — that's the chord. Move your right hand slowly left-right in an arc while holding it for vibrato.
 
 Full spec, including which finger-combinations are reserved for future chords (v2), lives in [`docs/GESTURE_ENCODING.md`](./docs/GESTURE_ENCODING.md).
 
@@ -117,3 +119,61 @@ TODO — not yet chosen.
 ## Contributing
 
 Not currently open to outside contributions. This may change once the MVP is stable.
+
+## Project structure
+
+```
+chordform/
+├── docs/                          # PRD, architecture, gesture spec, security, etc.
+├── public/                        # Static assets
+├── src/
+│   ├── App.tsx                    # Screen router (landing/loading/play/error states)
+│   ├── main.tsx                   # App entry point
+│   ├── index.css
+│   ├── audio-engine/              # Tone.js synth setup, presets, vibrato, capture stream
+│   │   ├── engine.ts
+│   │   ├── types.ts
+│   │   └── index.ts
+│   ├── gesture-encoding/          # Pure finger-state -> chord lookup tables (unit tested)
+│   │   ├── lookup.ts
+│   │   ├── lookup.test.ts
+│   │   ├── types.ts
+│   │   └── index.ts
+│   ├── hand-tracking/             # MediaPipe wrapper, finger-curl classification, overlay drawing
+│   │   ├── tracker.ts
+│   │   ├── finger-curl.ts
+│   │   ├── drawing.ts
+│   │   └── index.ts
+│   ├── recording/                 # MediaRecorder orchestration, mixed-stream composition
+│   │   ├── recorder.ts
+│   │   └── index.ts
+│   ├── hooks/                     # App-level state and canvas render loop
+│   │   ├── useAppState.ts
+│   │   └── useCanvasRenderer.ts
+│   ├── design-tokens/             # CSS custom properties (palette, type scale, breakpoints)
+│   │   └── tokens.css
+│   ├── ui/
+│   │   ├── play-screen/           # Camera feed, canvas overlay, HUD host
+│   │   ├── hud/                   # Chord readout, instrument/transpose/record controls
+│   │   ├── reference-panel/       # On-screen chord vocabulary chart
+│   │   ├── recording-review/      # Post-recording preview/download/discard
+│   │   └── visualizer/            # Live waveform display
+│   └── types/                     # Ambient type declarations (e.g. fingerpose)
+├── index.html
+├── package.json
+├── vite.config.ts
+├── tsconfig*.json
+└── netlify.toml
+```
+
+## Changelog
+
+### v1.0.1
+
+- Fixed disabled fingerpose confidence threshold that let ambiguous/mid-transition hand shapes resolve to a definite gesture, causing chord flicker
+- Fixed leaked `AudioContext` created per recording (never closed)
+- Fixed leaked microphone `MediaStream` that stayed active after a recording stopped
+- Removed dead, unused mic-lifecycle code from the audio engine
+- Removed a dead `micStream` state field and added a guard against double-starting the camera/audio/tracking pipeline
+- Fixed a mismatched `orientationchange` listener that was never actually removed on unmount
+- Added keyboard shortcuts on the play screen: `Space` (record/stop), `R` (reference), `↑`/`↓` (transpose), `Esc` (exit), disabled while a modal is open

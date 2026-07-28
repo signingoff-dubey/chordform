@@ -54,3 +54,24 @@
   color: var(--signal-dim);
   opacity: 0.6;
 }
+
+.landing__spinner {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto 20px;
+  border: 3px solid var(--signal-dim);
+  border-top-color: var(--signal);
+  border-radius: 50%;
+  animation: landing-spin 0.8s linear infinite;
+}
+
+@keyframes landing-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing__spinner {
+    animation: none;
+    opacity: 0.6;
+  }
+}

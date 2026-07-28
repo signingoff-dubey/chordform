@@ -1,2 +1,3 @@
 export { AudioEngine } from './engine';
-export type { SynthPreset, AudioEngineState } from './types';
+export { INSTRUMENTS } from './types';
+export type { SynthPreset, AudioEngineState, InstrumentOption } from './types';

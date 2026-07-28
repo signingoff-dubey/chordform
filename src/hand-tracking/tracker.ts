@@ -1,6 +1,7 @@
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import type { FingerState } from '../gesture-encoding';
+import { classifyFingerState } from './finger-curl';
 
 export interface TrackedHand {
   fingers: FingerState;
@@ -27,8 +28,13 @@ export class HandTracker {
   private animationId: number | null = null;
   private videoEl: HTMLVideoElement | null = null;
 
-  private readonly DEBOUNCE_MS = 180;
-  private readonly MIN_CONFIDENCE = 0.5;
+  private readonly DEBOUNCE_MS = 220;
+  // This is MediaPipe's left/right classification confidence, not a
+  // hand-presence score — we don't use the handedness label (see loop()),
+  // so this is only a loose sanity filter against near-garbage detections,
+  // not a real detection-quality gate. Keep it lenient to avoid dropping
+  // clearly-visible hands just because left/right is ambiguous.
+  private readonly MIN_CONFIDENCE = 0.3;
 
   private debounceStore: Record<string, DebounceEntry | null> = {
     left: null,
@@ -79,14 +85,12 @@ export class HandTracker {
 
     const results = this.handLandmarker.detectForVideo(this.videoEl, performance.now());
 
-    let detectedLeft: TrackedHand | null = null;
-    let detectedRight: TrackedHand | null = null;
+    const detected: TrackedHand[] = [];
 
     if (results.landmarks) {
       for (let i = 0; i < results.landmarks.length; i++) {
         const landmarks = results.landmarks[i];
-        const handedness = results.handednesses?.[i]?.[0]?.categoryName ?? 'Left';
-        const confidence = results.handednesses?.[i]?.[0]?.score ?? 0;
+        const confidence = results.handednesses?.[i]?.[0]?.score ?? 1;
 
         if (confidence < this.MIN_CONFIDENCE) continue;
 
@@ -100,20 +104,38 @@ export class HandTracker {
         cx /= landmarks.length;
         cy /= landmarks.length;
 
-        const hand: TrackedHand = {
+        detected.push({
           fingers,
           landmarks,
           centroid: { x: cx, y: cy },
           confidence,
           debounceProgress: 0,
-        };
-
-        if (handedness === 'Left') {
-          detectedLeft = hand;
-        } else {
-          detectedRight = hand;
-        }
+        });
       }
+    }
+
+    // We feed MediaPipe the raw (unmirrored) video frame, but the video is
+    // displayed mirrored (selfie view). MediaPipe's Left/Right handedness
+    // output assumes pre-mirrored input, so trusting it here would swap
+    // root/quality relative to what the user sees on screen. Instead, assign
+    // left/right purely from mirrored on-screen x-position: whichever hand
+    // sits on the left half of what the user actually sees is "left" (root).
+    // Raw centroid.x maps to mirroredX = 1 - x, so a larger raw x means it
+    // renders further left on screen.
+    let detectedLeft: TrackedHand | null = null;
+    let detectedRight: TrackedHand | null = null;
+
+    if (detected.length === 1) {
+      const mirroredX = 1 - detected[0].centroid.x;
+      if (mirroredX < 0.5) {
+        detectedLeft = detected[0];
+      } else {
+        detectedRight = detected[0];
+      }
+    } else if (detected.length >= 2) {
+      const sorted = [...detected].sort((a, b) => b.centroid.x - a.centroid.x);
+      detectedLeft = sorted[0];
+      detectedRight = sorted[1];
     }
 
     const finalLeft = this.debounceHand('left', detectedLeft);
@@ -125,19 +147,7 @@ export class HandTracker {
   };
 
   private landmarksToFingerState(landmarks: NormalizedLandmark[]): FingerState {
-    const fingerTips = [4, 8, 12, 16, 20];
-    const fingerPips = [3, 6, 10, 14, 18];
-
-    const fingerStates = fingerTips.map((tipIdx, i) => {
-      const tip = landmarks[tipIdx];
-      const pip = landmarks[fingerPips[i]];
-      if (i === 0) {
-        return tip.x > pip.x;
-      }
-      return tip.y < pip.y;
-    }) as FingerState;
-
-    return fingerStates;
+    return classifyFingerState(landmarks);
   }
 
   private debounceHand(side: string, raw: TrackedHand | null): TrackedHand | null {

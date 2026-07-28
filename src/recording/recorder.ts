@@ -4,6 +4,7 @@ export class SessionRecorder {
   private recording = false;
   private canvasStream: MediaStream | null = null;
   private mixedStream: MediaStream | null = null;
+  private mixContext: AudioContext | null = null;
 
   async startRecording(
     canvas: HTMLCanvasElement,
@@ -22,6 +23,7 @@ export class SessionRecorder {
 
     if (micStream) {
       const context = new AudioContext();
+      this.mixContext = context;
       const dest = context.createMediaStreamDestination();
       const audioSrc = audioStream ? context.createMediaStreamSource(audioStream) : null;
       const micSrc = context.createMediaStreamSource(micStream);
@@ -78,6 +80,9 @@ export class SessionRecorder {
         resolve(blob);
       };
 
+      if (this.mediaRecorder.state === 'recording') {
+        this.mediaRecorder.requestData();
+      }
       this.mediaRecorder.stop();
     });
   }
@@ -90,6 +95,10 @@ export class SessionRecorder {
     if (this.mixedStream) {
       this.mixedStream.getTracks().forEach(t => t.stop());
       this.mixedStream = null;
+    }
+    if (this.mixContext) {
+      this.mixContext.close();
+      this.mixContext = null;
     }
     this.mediaRecorder = null;
   }

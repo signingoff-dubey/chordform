@@ -8,6 +8,7 @@ export function useCanvasRenderer() {
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const latestResultRef = useRef<TrackingResult | null>(null);
   const latestChordRef = useRef<ChordDisplay | null>(null);
+  const isRecordingRef = useRef(false);
   const rafRef = useRef<number | null>(null);
 
   const render = useCallback(() => {
@@ -34,8 +35,14 @@ export function useCanvasRenderer() {
       result?.right ?? null
     );
 
-    const chord = latestChordRef.current;
-    drawChordHUD(ctx, canvas.width, canvas.height, chord?.chordName ?? null, chord?.isSounding ?? false);
+    // Only burn the chord name into the canvas while actually recording — the
+    // live view already shows it via the DOM HUD, so drawing it here too
+    // would show it twice on screen. It's only needed on the canvas for the
+    // saved recording, which captures this canvas as its video track.
+    if (isRecordingRef.current) {
+      const chord = latestChordRef.current;
+      drawChordHUD(ctx, canvas.width, canvas.height, chord?.chordName ?? null, chord?.isSounding ?? false);
+    }
 
     rafRef.current = requestAnimationFrame(render);
   }, []);
@@ -78,11 +85,16 @@ export function useCanvasRenderer() {
     latestChordRef.current = chord;
   }, []);
 
+  const setRecording = useCallback((isRecording: boolean) => {
+    isRecordingRef.current = isRecording;
+  }, []);
+
   return {
     canvasRef,
     startRenderer,
     stopRenderer,
     updateTrackingResult,
     updateChordDisplay,
+    setRecording,
   };
 }

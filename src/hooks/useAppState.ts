@@ -8,7 +8,10 @@ import { SessionRecorder } from '../recording';
 import type { SynthPreset } from '../audio-engine';
 import { useCanvasRenderer } from './useCanvasRenderer';
 
-export type AppScreen = 'landing' | 'play' | 'permission-denied' | 'camera-unavailable';
+const TRANSPOSE_MIN = -12;
+const TRANSPOSE_MAX = 12;
+
+export type AppScreen = 'landing' | 'loading' | 'play' | 'permission-denied' | 'camera-unavailable';
 
 export interface ChordDisplay {
   root: string | null;
@@ -26,10 +29,10 @@ export interface RecordingState {
 interface AppState {
   screen: AppScreen;
   cameraStream: MediaStream | null;
-  micStream: MediaStream | null;
   chord: ChordDisplay;
   recording: RecordingState;
   preset: SynthPreset;
+  transpose: number;
   showReference: boolean;
   oneHandVisible: boolean;
 }
@@ -39,6 +42,7 @@ export function useAppState() {
   const audioEngineRef = useRef<AudioEngine | null>(null);
   const recorderRef = useRef<SessionRecorder | null>(null);
   const wasSoundingRef = useRef(false);
+  const transposeRef = useRef(0);
 
   const vibratoBufferRef = useRef<number[]>([]);
   const VIBRATO_SMOOTH_WINDOW = 6;
@@ -50,15 +54,18 @@ export function useAppState() {
     stopRenderer,
     updateTrackingResult,
     updateChordDisplay,
+    setRecording,
   } = useCanvasRenderer();
+
+  const micStreamRef = useRef<MediaStream | null>(null);
 
   const [state, setState] = useState<AppState>({
     screen: 'landing',
     cameraStream: null,
-    micStream: null,
     chord: { root: null, quality: null, chordName: null, isSounding: false },
     recording: { isRecording: false, blob: null, url: null },
     preset: 'warm',
+    transpose: 0,
     showReference: false,
     oneHandVisible: false,
   });
@@ -74,7 +81,11 @@ export function useAppState() {
         return false;
       }
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       });
       setPartial({ cameraStream: stream });
@@ -100,23 +111,53 @@ export function useAppState() {
     }
   }, []);
 
+  const isStartingRef = useRef(false);
+
   const startPlaying = useCallback(async () => {
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
+
+    setPartial({ screen: 'loading' });
+
     const ok = await requestCamera();
-    if (!ok) return;
+    if (!ok) {
+      isStartingRef.current = false;
+      return;
+    }
 
-    const engine = new AudioEngine();
-    await engine.init();
-    audioEngineRef.current = engine;
+    try {
+      const engine = new AudioEngine();
+      await engine.init();
+      // A fresh AudioEngine always constructs its default 'warm' voice — if
+      // the user previously picked a different instrument, restore it so
+      // the UI (which still shows the last selection) matches what's heard.
+      if (state.preset !== 'warm') {
+        engine.setPreset(state.preset);
+      }
+      audioEngineRef.current = engine;
 
-    const tracker = new HandTracker();
-    await tracker.init();
-    handTrackerRef.current = tracker;
+      const tracker = new HandTracker();
+      await tracker.init();
+      handTrackerRef.current = tracker;
 
-    const recorder = new SessionRecorder();
-    recorderRef.current = recorder;
+      const recorder = new SessionRecorder();
+      recorderRef.current = recorder;
 
-    setPartial({ screen: 'play' });
-  }, [requestCamera, setPartial]);
+      setPartial({ screen: 'play' });
+    } catch {
+      audioEngineRef.current?.dispose();
+      audioEngineRef.current = null;
+      handTrackerRef.current?.dispose();
+      handTrackerRef.current = null;
+
+      setState(prev => {
+        prev.cameraStream?.getTracks().forEach(t => t.stop());
+        return { ...prev, cameraStream: null, screen: 'camera-unavailable' };
+      });
+    } finally {
+      isStartingRef.current = false;
+    }
+  }, [requestCamera, setPartial, state.preset]);
 
   const onTrackingResult = useCallback((result: TrackingResult) => {
     const engine = audioEngineRef.current;
@@ -149,9 +190,17 @@ export function useAppState() {
     }));
 
     if (isSounding && resolved.midiNotes) {
-      engine.playNotes(resolved.midiNotes);
+      const shiftedNotes = transposeRef.current === 0
+        ? resolved.midiNotes
+        : resolved.midiNotes.map(n => n + transposeRef.current);
+      engine.playNotes(shiftedNotes);
       wasSoundingRef.current = true;
-    } else if (!leftFingers || !rightFingers) {
+    } else {
+      // Anything short of a fully-resolved chord must be silent: no hand in
+      // frame, a hand held at fist (no fingers extended), or a gesture that
+      // doesn't map to a note/quality. Checking hand presence alone missed
+      // the fist case, since a fisted hand is still a non-null, truthy
+      // FingerState — just one whose lookup resolves to nothing.
       engine.stopAll();
       wasSoundingRef.current = false;
     }
@@ -240,6 +289,14 @@ export function useAppState() {
     setPartial({ preset });
   }, [setPartial]);
 
+  const adjustTranspose = useCallback((delta: number) => {
+    setState(prev => {
+      const next = Math.max(TRANSPOSE_MIN, Math.min(TRANSPOSE_MAX, prev.transpose + delta));
+      transposeRef.current = next;
+      return { ...prev, transpose: next };
+    });
+  }, []);
+
   const startRecording = useCallback(async () => {
     const engine = audioEngineRef.current;
     const recorder = recorderRef.current;
@@ -249,14 +306,19 @@ export function useAppState() {
 
     const audioStream = engine.getStreamForCapture();
     const micStream = await requestMic();
+    micStreamRef.current = micStream;
 
     await recorder.startRecording(canvas, audioStream ?? null, micStream);
 
+    setRecording(true);
     setPartial({ recording: { isRecording: true, blob: null, url: null } });
-  }, [requestMic, setPartial]);
+  }, [requestMic, setPartial, setRecording]);
 
   const stopRecording = useCallback(async () => {
+    setRecording(false);
     const blob = await recorderRef.current?.stopRecording();
+    micStreamRef.current?.getTracks().forEach(t => t.stop());
+    micStreamRef.current = null;
     if (blob && blob.size > 0) {
       const url = URL.createObjectURL(blob);
       setPartial({
@@ -267,7 +329,7 @@ export function useAppState() {
         recording: { isRecording: false, blob: null, url: null },
       });
     }
-  }, [setPartial]);
+  }, [setPartial, setRecording]);
 
   const discardRecording = useCallback(() => {
     if (state.recording.url) {
@@ -292,6 +354,8 @@ export function useAppState() {
     audioEngineRef.current = null;
     recorderRef.current?.dispose();
     recorderRef.current = null;
+    micStreamRef.current?.getTracks().forEach(t => t.stop());
+    micStreamRef.current = null;
     stopRenderer();
 
     setState(prev => {
@@ -314,14 +378,20 @@ export function useAppState() {
     stopCameraRef.current = stopCamera;
   }, [stopCamera]);
 
+  const getWaveform = useCallback((): Float32Array | null => {
+    return audioEngineRef.current?.getWaveform() ?? null;
+  }, []);
+
   return {
     state,
     canvasRef,
+    getWaveform,
     startPlaying,
     startCamera,
     stopCamera,
     toggleReference,
     setPreset,
+    adjustTranspose,
     startRecording,
     stopRecording,
     discardRecording,
