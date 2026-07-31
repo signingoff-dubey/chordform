@@ -47,13 +47,22 @@ export class SessionRecorder {
 
     this.mixedStream = new MediaStream([...tracks, ...audioTracks]);
 
+    // Safari doesn't support any 'video/webm' variant, only 'video/mp4' — and
+    // MediaRecorder's constructor throws synchronously on an unsupported
+    // mimeType, which would otherwise break recording entirely there. Fall
+    // back to whatever the browser actually supports, and to its own default
+    // (by omitting the option) if none of these explicit types are.
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
       ? 'video/webm;codecs=vp9'
       : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
         ? 'video/webm;codecs=vp8'
-        : 'video/webm';
+        : MediaRecorder.isTypeSupported('video/webm')
+          ? 'video/webm'
+          : MediaRecorder.isTypeSupported('video/mp4')
+            ? 'video/mp4'
+            : '';
 
-    this.mediaRecorder = new MediaRecorder(this.mixedStream, { mimeType });
+    this.mediaRecorder = new MediaRecorder(this.mixedStream, mimeType ? { mimeType } : undefined);
 
     this.mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {

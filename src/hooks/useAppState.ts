@@ -341,9 +341,14 @@ export function useAppState() {
   const downloadRecording = useCallback(() => {
     if (!state.recording.blob || !state.recording.url) return;
 
+    // The actual container depends on what the browser's MediaRecorder
+    // supported (see SessionRecorder.startRecording) — Safari records mp4,
+    // not webm — so name the file from the blob's real MIME type.
+    const ext = state.recording.blob.type.includes('mp4') ? 'mp4' : 'webm';
+
     const a = document.createElement('a');
     a.href = state.recording.url;
-    a.download = `chordform-recording-${Date.now()}.webm`;
+    a.download = `chordform-recording-${Date.now()}.${ext}`;
     a.click();
   }, [state.recording]);
 

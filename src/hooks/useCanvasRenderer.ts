@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 import type { TrackingResult } from '../hand-tracking';
-import { drawHandOverlay, drawVideoFrame, drawChordHUD } from '../hand-tracking/drawing';
+import { drawHandOverlay, drawVideoFrame, drawChordHUD, computeCoverRect } from '../hand-tracking/drawing';
 import type { ChordDisplay } from './useAppState';
 
 export function useCanvasRenderer() {
@@ -19,8 +19,9 @@ export function useCanvasRenderer() {
     if (!ctx) return;
 
     const video = videoElRef.current;
+    let rect = computeCoverRect(canvas.width, canvas.height, canvas.width, canvas.height);
     if (video && video.readyState >= 2) {
-      drawVideoFrame(ctx, video, canvas.width, canvas.height);
+      rect = drawVideoFrame(ctx, video, canvas.width, canvas.height);
     } else {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
@@ -30,9 +31,9 @@ export function useCanvasRenderer() {
     drawHandOverlay(
       ctx,
       canvas.width,
-      canvas.height,
       result?.left ?? null,
-      result?.right ?? null
+      result?.right ?? null,
+      rect
     );
 
     // Only burn the chord name into the canvas while actually recording — the

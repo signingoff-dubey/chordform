@@ -50,17 +50,35 @@ export class HandTracker {
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
     );
 
-    this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath:
-          'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-        delegate: 'GPU',
-      },
-      runningMode: 'VIDEO',
+    const options = {
+      runningMode: 'VIDEO' as const,
       numHands: 2,
       minHandDetectionConfidence: 0.6,
       minTrackingConfidence: 0.5,
-    });
+    };
+
+    // The GPU delegate isn't available on every browser/device (some mobile
+    // Safari and WebView builds lack WebGL support MediaPipe needs for it) —
+    // fall back to CPU rather than leaving hand tracking entirely broken.
+    try {
+      this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+          delegate: 'GPU',
+        },
+        ...options,
+      });
+    } catch {
+      this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+          delegate: 'CPU',
+        },
+        ...options,
+      });
+    }
   }
 
   start(videoEl: HTMLVideoElement, onResult: (result: TrackingResult) => void): void {

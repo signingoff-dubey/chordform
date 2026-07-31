@@ -12,47 +12,84 @@ const HAND_CONNECTIONS: [number, number][] = [
 const LANDMARK_RADIUS = 3;
 const CONNECTION_WIDTH = 1.5;
 
+export interface CoverRect {
+  offsetX: number;
+  offsetY: number;
+  drawWidth: number;
+  drawHeight: number;
+}
+
+// Mirrors CSS `object-fit: cover`: scale the source so it fully covers the
+// target box (cropping overflow) instead of stretching to fill it. Needed
+// because the camera's native aspect ratio (usually 16:9) rarely matches the
+// canvas's on-screen size (which follows the container — portrait phones,
+// square windows, etc.), and both the painted video and the hand-landmark
+// overlay must agree on the same mapping or the skeleton drifts off the hand.
+export function computeCoverRect(
+  targetWidth: number,
+  targetHeight: number,
+  sourceWidth: number,
+  sourceHeight: number
+): CoverRect {
+  if (!sourceWidth || !sourceHeight) {
+    return { offsetX: 0, offsetY: 0, drawWidth: targetWidth, drawHeight: targetHeight };
+  }
+  const scale = Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  return {
+    offsetX: (targetWidth - drawWidth) / 2,
+    offsetY: (targetHeight - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  };
+}
+
 export function drawVideoFrame(
   ctx: CanvasRenderingContext2D,
   video: HTMLVideoElement,
   width: number,
   height: number
-): void {
+): CoverRect {
+  const rect = computeCoverRect(width, height, video.videoWidth, video.videoHeight);
   ctx.save();
   ctx.translate(width, 0);
   ctx.scale(-1, 1);
-  ctx.drawImage(video, 0, 0, width, height);
+  ctx.drawImage(video, rect.offsetX, rect.offsetY, rect.drawWidth, rect.drawHeight);
   ctx.restore();
+  return rect;
 }
 
 export function drawHandOverlay(
   ctx: CanvasRenderingContext2D,
   width: number,
-  height: number,
   leftHand: TrackedHand | null,
-  rightHand: TrackedHand | null
+  rightHand: TrackedHand | null,
+  rect: CoverRect
 ): void {
   if (leftHand) {
-    drawHand(ctx, width, height, leftHand, false);
+    drawHand(ctx, width, rect, leftHand);
   }
   if (rightHand) {
-    drawHand(ctx, width, height, rightHand, false);
+    drawHand(ctx, width, rect, rightHand);
   }
 }
 
 function drawHand(
   ctx: CanvasRenderingContext2D,
   width: number,
-  height: number,
-  hand: TrackedHand,
-  _isMirrored: boolean
+  rect: CoverRect,
+  hand: TrackedHand
 ): void {
   const landmarks = hand.landmarks;
   if (!landmarks || landmarks.length < 21) return;
 
+  // lm.x/y are normalized to the raw (unmirrored) video frame; map into the
+  // same cover-fit rect used to paint the video, then mirror horizontally to
+  // match the selfie-view image actually on screen.
   const toPixel = (lm: { x: number; y: number }) => ({
-    x: (1 - lm.x) * width,
-    y: lm.y * height,
+    x: width - (rect.offsetX + lm.x * rect.drawWidth),
+    y: rect.offsetY + lm.y * rect.drawHeight,
   });
 
   const points = landmarks.map(toPixel);
@@ -75,19 +112,18 @@ function drawHand(
     ctx.fill();
   }
 
-  drawConfidenceRing(ctx, hand, width, height, toPixel);
+  drawConfidenceRing(ctx, hand, rect, toPixel);
 }
 
 function drawConfidenceRing(
   ctx: CanvasRenderingContext2D,
   hand: TrackedHand,
-  width: number,
-  height: number,
+  rect: CoverRect,
   toPixel: (lm: { x: number; y: number }) => { x: number; y: number }
 ): void {
   const centroid = toPixel(hand.centroid);
   const progress = hand.debounceProgress ?? 0;
-  const ringRadius = Math.min(width, height) * 0.07;
+  const ringRadius = Math.min(rect.drawWidth, rect.drawHeight) * 0.07;
   const circumference = 2 * Math.PI * ringRadius;
 
   ctx.lineCap = 'round';
